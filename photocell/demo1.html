@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html>
+  <!-- jQuery demo of photocell project (ADC input to P9 pin 40) -->
+  <!-- copy this file to /usr/share/bone101/extras/photocell -->
+  <!-- Then browse to http://192.168.7.2/extras/photocell/demo_jquery.html -->
+  <head>
+    <title>Bonescript Photocell Demo</title>
+    <script src="../../static/jquery.js"></script>
+    <script src="../../static/bonescript.js"></script>
+    <script src="gauge.min.js"></script>
+    <style>
+      body { font-family: Verdana; }
+      h1   { font-size: 18pt; font-weight: bold; }
+      p    { font-size: 14pt; }
+      #brightness { border: 1px solid black; }
+      #speedo-container {
+        position: relative;
+        float: left;
+        width: 220px;
+        margin: 0 20px 20px 0;
+        clear: both;
+      }
+      #speedo-text {
+        position: absolute; top: 0; left: 0; right: 0;
+        height: 30px;
+        text-align: center; font-weight: bold;
+      } 
+      #speedo {
+        width: 220px; top: 30px;
+        position: relative;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Photocell Output</h1>
+    <div>ADC status: <span id="adc-value"></span></div>
+    <div>ADC voltage: <span id="adc-voltage"></span> V</div>
+    <div>Brightness: <span id="brightness">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></div>
+    <div>Speed:</div>
+    <div id="speedo-container">
+      <div id="speedo-text"></div>
+      <canvas width=220 height=70 id="speedo"></canvas>
+    <div>
+    <script>
+      var gaugeOpts = {
+        fontSize:  12,
+        lines:     12, // The number of lines to draw
+        angle:     0, // The length of each line
+        lineWidth: 0.16, // The line thickness
+        pointer: {
+          length:      1, // The radius of the inner circle
+          strokeWidth: 0.062, // The rotation offset
+          color:       '#000000' // Fill color
+        },
+        limitMax:    'false',   // If true, the pointer will not go past the end of the gauge
+        colorStart:  '#6FADCF',   // Colors
+        colorStop:   '#8FC0DA',    // just experiment with them
+        strokeColor: '#E0E0E0', // to see which ones work best for you
+        generateGradient: true
+      };
+      var elGauge     = document.getElementById('speedo'); // your canvas element
+      var elGaugeText = document.getElementById('speedo-text')
+      var gauge = new Gauge(elGauge).setOptions(gaugeOpts); // create sexy gauge!
+      gauge.maxValue       = 100; // set max gauge value
+      gauge.animationSpeed = 32; // set animation speed (32 is default value)
+      gauge.setTextField(elGaugeText);
+      gauge.set(0); // set actual value    
+    
+      // Connect with board connected at fixed USB address
+      // and execute run() upon initialization
+      setTargetAddress(window.location.hostname, { initialized: run });
+      
+      // The demo BoneScript application within the 'run()' function
+      function run() {
+        /*
+         * Setup
+         */
+        var b = require('bonescript');
+
+        var adcValue        = 0.0;
+        var adcVoltage      = 0.0;
+        var brightnessValue = 0;
+        var pctValue        = 0;
+        
+        var P_PCELL = 'P9_40'; // AIN1 - ADC input 1
+
+        readPhotocell(); // Start photocell updates
+
+        function readPhotocell() {
+          b.analogRead(P_PCELL, onReadPhotocell);
+        }
+
+        function onReadPhotocell(x) {
+          adcValue        = x.value.toFixed(4);
+          adcVoltage      = (x.value * 1.8).toFixed(4);
+          brightnessValue = Math.floor(x.value * 255);
+          pctValue        = Math.floor(x.value * 100);
+          $('#adc-value').html(adcValue);
+          $('#adc-voltage').html(adcVoltage);
+          $('#brightness').css('backgroundColor', 
+            'rgb(' + brightnessValue + ', ' + brightnessValue + ', ' + 
+            brightnessValue + ')');
+          gauge.set(pctValue);
+          
+          setTimeout(readPhotocell, 100); // Read photocell again in 100ms
+        }
+      }
+    </script>
+  </body>
+</html>
