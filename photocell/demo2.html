@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html>
+  <!-- jQuery demo of photocell project (ADC input to P9 pin 40) -->
+  <!-- copy this file to /usr/share/bone101/extras/photocell -->
+  <!-- Then browse to http://192.168.7.2/extras/photocell/demo_jquery.html -->
+  <head>
+    <title>Bonescript Photocell Demo</title>
+    <script src="../../static/jquery.js"></script>
+    <script src="../../static/bonescript.js"></script>
+    <script src="gauge.min.js"></script>
+    <style>
+      body { font-family: Verdana; }
+      h1   { font-size: 18pt; font-weight: bold; }
+      p    { font-size: 14pt; }
+      .led { border: 1px solid black; }
+      #speedo-container {
+        position: relative;
+        float: left;
+        width: 220px;
+        margin: 0 20px 20px 0;
+        clear: both;
+      }
+      #speedo-text {
+        position: absolute; top: 0; left: 0; right: 0;
+        height: 30px;
+        text-align: center; font-weight: bold;
+      } 
+      #speedo {
+        width: 220px; top: 30px;
+        position: relative;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Photocell Output</h1>
+    <div>ADC status: <span id="adc-value"></span></div>
+    <div>ADC voltage: <span id="adc-voltage"></span> V</div>
+    <div>LED status: <span id="green_led" class="led">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span> 
+      <span id="red_led" class="led">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></div>
+    <script>    
+      // Connect with board connected at fixed USB address
+      // and execute run() upon initialization
+      setTargetAddress(window.location.hostname, { initialized: run });
+      
+      // The demo BoneScript application within the 'run()' function
+      function run() {
+        /*
+         * Setup
+         */
+        var b = require('bonescript');
+
+        var adcValue        = 0.0;
+        var adcVoltage      = 0.0;
+        
+        var P_PCELL     = 'P9_40'; // AIN1 - ADC input 1
+        var P_GREEN_LED = 'P8_11'; // GPIO1_13
+        var P_RED_LED   = 'P8_12'; // GPIO1_12
+        
+        var BLINK_INTERVAL = 500; // milliseconds
+        
+        var GREEN_LED   = 0;
+        var RED_LED     = 1;
+        
+        var STATE_OFF   = 0;
+        var STATE_ON    = 1;
+        var STATE_BLINK = 2;
+
+        var ledPins     = [ P_GREEN_LED, P_RED_LED ];
+        var ledValues   = [ 0, 0 ];
+        var blinking    = -1;
+        var timer       = null;
+        var looper      = null;
+
+        function writeLed(ledIndex, val) {
+          if (ledIndex >= 0 && ledIndex <= 1) {
+            ledValues[ledIndex] = val;
+            b.digitalWrite(ledPins[ledIndex], val);
+          }
+        }
+        
+        function blink() {
+          if (blinking >= 0 && blinking <= 1) {
+            var currentVal = ledValues[blinking];
+            var newVal = (currentVal == 1) ? 0 : 1;
+            writeLed(blinking, newVal);
+          }
+        }
+        
+        function stopBlinking() {
+          if (timer) {
+            clearInterval(timer);
+            timer = null;
+          }
+          writeLed(blinking, 0);
+          blinking = -1;
+        }
+        
+        function startBlinking(ledIndex) {
+          // Only one LED will blink at a time
+          stopBlinking();
+          if (ledIndex >= 0 && ledIndex <= 1) {
+            blinking = ledIndex;
+            writeLed(blinking, 0);
+            timer = setInterval(blink, BLINK_INTERVAL);
+          }
+        }
+        
+        function setLed(ledIndex, newState) {
+          if (ledIndex >= 0 && ledIndex <= 1) {
+            if (newState == STATE_OFF) {
+              if (blinking == ledIndex) {
+                // Only one LED will blink at a time
+                stopBlinking();
+              }
+              writeLed(ledIndex, 0);
+            } else if (newState == STATE_ON) {
+              if (blinking == ledIndex) {
+                // Only one LED will blink at a time
+                stopBlinking();
+              }
+              writeLed(ledIndex, 1);
+            } else if (newState == STATE_BLINK) {
+              if (blinking != ledIndex) {
+                startBlinking(ledIndex);
+              }
+            }
+          }
+        }
+        
+        function showLeds() {
+          var greenVal = ledValues[GREEN_LED];
+          var redVal   = ledValues[RED_LED];
+          $('#green_led').css('background-color', greenVal ? '#00FF00' : '#FFFFFF');
+          $('#red_led').css('background-color', redVal ? '#FF0000' : '#FFFFFF');
+        }
+        
+        b.pinMode(P_GREEN_LED, b.OUTPUT);
+        b.pinMode(P_RED_LED,   b.OUTPUT);
+        
+        readPhotocell(); // Start photocell updates
+
+        function readPhotocell() {
+          b.analogRead(P_PCELL, onReadPhotocell);
+        }
+
+        function onReadPhotocell(x) {
+          adcValue        = x.value.toFixed(4);
+          adcVoltage      = (x.value * 1.8).toFixed(4);
+          
+          if (adcValue > 0.7) {
+            // console.log('Green OFF, Red OFF');
+            setLed(GREEN_LED, STATE_OFF);
+            setLed(RED_LED,   STATE_OFF);
+          } else if (adcValue > 0.5) {
+            // console.log('Green BLINK, Red OFF');
+            setLed(GREEN_LED, STATE_BLINK);
+            setLed(RED_LED,   STATE_OFF);
+          } else if (adcValue > 0.3) {
+            // console.log('Green ON, Red BLINK');
+            setLed(GREEN_LED, STATE_ON);
+            setLed(RED_LED,   STATE_BLINK);
+          } else {
+            // console.log('Green ON, Red ON');
+            setLed(GREEN_LED, STATE_ON);
+            setLed(RED_LED,   STATE_ON);
+          }
+          $('#adc-value').html(adcValue);
+          $('#adc-voltage').html(adcVoltage);
+          showLeds();
+      
+          looper = setTimeout(readPhotocell, 100); // Read photocell again in 100ms
+        }
+      }
+    </script>
+  </body>
+</html>
