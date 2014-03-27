@@ -65,7 +65,7 @@
         function blink() {
           if (blinking >= 0 && blinking <= 1) {
             var currentVal = ledValues[blinking];
-            var newVal = (currentVal == 1) ? 0 : 1;
+            var newVal = (currentVal == b.HIGH) ? b.LOW : b.HIGH;
             writeLed(blinking, newVal);
           }
         }
@@ -75,7 +75,7 @@
             clearInterval(timer);
             timer = null;
           }
-          writeLed(blinking, 0);
+          writeLed(blinking, b.LOW);
           blinking = -1;
         }
         
@@ -84,7 +84,7 @@
           stopBlinking();
           if (ledIndex >= 0 && ledIndex <= 1) {
             blinking = ledIndex;
-            writeLed(blinking, 0);
+            writeLed(blinking, b.LOW);
             timer = setInterval(blink, BLINK_INTERVAL);
           }
         }
@@ -96,13 +96,13 @@
                 // Only one LED will blink at a time
                 stopBlinking();
               }
-              writeLed(ledIndex, 0);
+              writeLed(ledIndex, b.LOW);
             } else if (newState == STATE_ON) {
               if (blinking == ledIndex) {
                 // Only one LED will blink at a time
                 stopBlinking();
               }
-              writeLed(ledIndex, 1);
+              writeLed(ledIndex, b.HIGH);
             } else if (newState == STATE_BLINK) {
               if (blinking != ledIndex) {
                 startBlinking(ledIndex);
